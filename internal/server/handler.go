@@ -401,6 +401,21 @@ func (h *Handler) GetFullBlock(c *gin.Context) {
 	for txid := range txOutputs {
 		sortedTxids = append(sortedTxids, txid)
 	}
+
+	// Opt-in: also emit transactions that only spend taproot outputs. Their
+	// outpoints are fetched above and otherwise discarded, which makes the
+	// spent side of the response incomplete. Off by default because such an
+	// item carries a zero tweak, and clients that parse the tweak as a public
+	// key reject the whole response.
+	if c.Query("include_input_only") == "1" {
+		for txid := range txidOutpointsMap {
+			key := hex.EncodeToString(txid[:])
+			if _, exists := txOutputs[key]; !exists {
+				sortedTxids = append(sortedTxids, key)
+			}
+		}
+	}
+
 	sort.Strings(sortedTxids)
 
 	for _, txid := range sortedTxids {
