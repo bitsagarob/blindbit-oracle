@@ -86,8 +86,27 @@ ends after the last requested height has been sent.
 |---|---|---|
 | `start` | uint64 | First block height to include (inclusive) |
 | `end` | uint64 | Last block height to include (inclusive) |
-| `dustlimit` | uint64 | *Reserved — not yet applied by the server* |
-| `cut_through` | bool | *Reserved — not yet applied by the server* |
+| `dustlimit` | uint64 | Amount below which a transaction is not worth returning. `StreamComputeIndex` only; *reserved* on `StreamBlockScanDataShort` |
+| `cut_through` | bool | Drop every tracked output already spent at the index tip. `StreamComputeIndex` only; *reserved* on `StreamBlockScanDataShort` |
+
+`cut_through` is applied per output and is judged against a chain tip read
+once at the start of the stream, so one response stream is one consistent
+snapshot. `dustlimit` is applied per transaction, the same reading as the v1
+`/tweaks?dustLimit=` endpoint: a transaction is kept when at least one of its
+surviving outputs reaches the limit, and it then carries all of them. A
+transaction of which no output survives is omitted from the block entirely.
+`dustlimit: 0` with `cut_through: false` returns the unfiltered index byte
+for byte.
+
+The server also has a stricter per output reading of `dustlimit`
+(`database.DustPerOutput`), which drops the individual outputs below the
+limit. The two readings never differ in *which* transactions are returned,
+only in how many output prefixes a returned transaction carries, because
+both keep a transaction exactly when one of its surviving outputs reaches the
+limit. Measured over 1000 blocks at height 900000 with `dustlimit: 1000` and
+`cut_through: true`, both return 16334 transactions; per transaction returns
+33859 prefixes and 1332582 bytes, per output returns 18679 prefixes and
+1211142 bytes, a 9 percent saving. The choice is bandwidth only.
 
 ---
 

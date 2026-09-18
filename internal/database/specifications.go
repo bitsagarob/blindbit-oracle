@@ -17,6 +17,7 @@ type DB interface {
 	FetchSpentOutputsShort(blockhash []byte) ([]byte, error)
 	ChainIterator(asc bool) (<-chan []byte, error) // todo: add context
 	FetchComputeIndex(height uint32) ([]*pb.ComputeIndexTxItem, error)
+	FetchComputeIndexFiltered(height, tipHeight uint32, dustLimit uint64, dustMode DustMode, cutThrough bool) ([]*pb.ComputeIndexTxItem, error)
 	BlockhashInDB(blockhash []byte) (bool, error)
 	BatchSize() int
 	KeyExistsComputeIndex(blockhash []byte) (bool, error)
@@ -25,6 +26,22 @@ type DB interface {
 	FetchTxidOutpoints(blockhash, txid []byte) ([][36]byte, error)
 	FetchAllTxidOutpointsForBlock(blockhash []byte) (map[[32]byte][][36]byte, error)
 }
+
+// DustMode selects how a request's dust limit is read.
+type DustMode int
+
+const (
+	// DustPerTx keeps every surviving output of a transaction as soon as one
+	// of them reaches the dust limit. This is the reading of the dormant
+	// TweaksForBlock and of the v1 /tweaks?dustLimit endpoint.
+	//
+	// The two modes never differ in which transactions survive, only in how
+	// many output prefixes a surviving transaction carries: both keep a
+	// transaction exactly when one of its surviving outputs reaches the limit.
+	DustPerTx DustMode = iota
+	// DustPerOutput drops each individual output below the dust limit.
+	DustPerOutput
+)
 
 type TweakRow struct {
 	Txid  [32]byte
