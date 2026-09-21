@@ -106,8 +106,7 @@ func (s *Store) FetchComputeIndexFiltered(
 			return nil, err
 		}
 
-		// all or nothing per tx: dropping single outputs stops a scanner at
-		// the first missing k and hides every later output of that tx
+		// all or nothing per tx: a missing k stops the scanner and hides later outputs
 		keep := false
 		for _, o := range outs {
 			if o.Amount < dustLimit {

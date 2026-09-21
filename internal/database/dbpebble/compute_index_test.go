@@ -187,6 +187,7 @@ func TestFetchComputeIndexFilteredPassthrough(t *testing.T) {
 	}
 }
 
+// A kept tx must carry all of its outputs: a missing k stops the scanner.
 func TestFetchComputeIndexFilteredKeepsTxWhole(t *testing.T) {
 	s := newTestStore(t)
 	_, tip, err := s.GetChainTip()
