@@ -18,3 +18,8 @@ docker-compose.yaml
 /bin/
 /signet-1/
 /dev/
+
+# The built binary and the deploy staging dir: built by ./deploy.sh, never committed.
+/blindbit-oracle
+/blindbit-oracle.prev
+/bin/
