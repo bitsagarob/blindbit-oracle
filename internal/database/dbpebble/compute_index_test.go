@@ -96,7 +96,7 @@ func TestFetchComputeIndexFiltered(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// one 8 byte prefix per surviving output, in vout order
+	// one 8 byte prefix per output, in vout order
 	short := func(bs ...byte) []byte {
 		var out []byte
 		for _, b := range bs {

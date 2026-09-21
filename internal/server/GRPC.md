@@ -87,7 +87,7 @@ ends after the last requested height has been sent.
 | `start` | uint64 | First block height to include (inclusive) |
 | `end` | uint64 | Last block height to include (inclusive) |
 | `dustlimit` | uint64 | Sats. Drop transactions with no surviving output at or above this. `StreamComputeIndex` only, *reserved* on `StreamBlockScanDataShort` |
-| `cut_through` | bool | Drop outputs already spent at the index tip. `StreamComputeIndex` only, *reserved* on `StreamBlockScanDataShort` |
+| `cut_through` | bool | Drop transactions whose outputs are all spent at the index tip. `StreamComputeIndex` only, *reserved* on `StreamBlockScanDataShort` |
 
 Both filters apply per transaction, never per output. A transaction is kept
 when at least one of its outputs is unspent at the pinned tip and at or above
