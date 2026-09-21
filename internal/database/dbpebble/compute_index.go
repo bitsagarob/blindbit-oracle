@@ -8,7 +8,6 @@ import (
 	"github.com/setavenger/blindbit-lib/proto/pb"
 	"github.com/setavenger/blindbit-lib/utils"
 	"github.com/setavenger/blindbit-oracle/internal/config"
-	"github.com/setavenger/blindbit-oracle/internal/database"
 )
 
 // should we encode the count of outputs?
@@ -84,18 +83,11 @@ func (s *Store) FetchComputeIndex(height uint32) ([]*pb.ComputeIndexTxItem, erro
 }
 
 // FetchComputeIndexFiltered returns the compute index for a height with the
-// request filters applied. cutThrough drops every output already spent on the
-// best chain at or before tipHeight; the caller pins that height so a whole
-// range is filtered against one snapshot. dustLimit is read according to
-// dustMode: per output, or per transaction, in which case a transaction keeps
-// all of its surviving outputs as soon as one of them reaches the limit. Both
-// readings drop the same transactions, they differ only in how many output
-// prefixes a surviving transaction carries. A tx item of which no output
-// survives is dropped whole. With dustLimit 0 and cutThrough false the stored
-// index is returned unchanged.
+// request filters applied. A tx item is dropped when none of its outputs
+// survives cutThrough and dustLimit; a surviving item is returned whole.
+// Returns the stored index unchanged for dustLimit 0, cutThrough false.
 func (s *Store) FetchComputeIndexFiltered(
-	height, tipHeight uint32, dustLimit uint64,
-	dustMode database.DustMode, cutThrough bool,
+	height, tipHeight uint32, dustLimit uint64, cutThrough bool,
 ) ([]*pb.ComputeIndexTxItem, error) {
 	computeIndexes, err := s.FetchComputeIndex(height)
 	if err != nil {
@@ -114,10 +106,11 @@ func (s *Store) FetchComputeIndexFiltered(
 			return nil, err
 		}
 
-		outputsShort := make([]byte, 0, len(idx.OutputsShort))
-		var maxAmount uint64
+		// all or nothing per tx: dropping single outputs stops a scanner at
+		// the first missing k and hides every later output of that tx
+		keep := false
 		for _, o := range outs {
-			if dustMode == database.DustPerOutput && o.Amount < dustLimit {
+			if o.Amount < dustLimit {
 				continue
 			}
 			if cutThrough {
@@ -129,20 +122,12 @@ func (s *Store) FetchComputeIndexFiltered(
 					continue
 				}
 			}
-			if o.Amount > maxAmount {
-				maxAmount = o.Amount
-			}
-			outputsShort = append(outputsShort, o.Pubkey[:8]...)
+			keep = true
+			break
 		}
-		// maxAmount is taken over the outputs that survived cut-through, so
-		// this is the per transaction dust test; under DustPerOutput every
-		// output left already cleared the limit and it cannot fire.
-		if len(outputsShort) == 0 || maxAmount < dustLimit {
-			continue
+		if keep {
+			filtered = append(filtered, idx)
 		}
-
-		idx.OutputsShort = outputsShort
-		filtered = append(filtered, idx)
 	}
 
 	return filtered, nil

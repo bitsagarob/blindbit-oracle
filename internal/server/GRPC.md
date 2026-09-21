@@ -86,27 +86,16 @@ ends after the last requested height has been sent.
 |---|---|---|
 | `start` | uint64 | First block height to include (inclusive) |
 | `end` | uint64 | Last block height to include (inclusive) |
-| `dustlimit` | uint64 | Amount below which a transaction is not worth returning. `StreamComputeIndex` only; *reserved* on `StreamBlockScanDataShort` |
-| `cut_through` | bool | Drop every tracked output already spent at the index tip. `StreamComputeIndex` only; *reserved* on `StreamBlockScanDataShort` |
+| `dustlimit` | uint64 | Sats. Drop transactions with no surviving output at or above this. `StreamComputeIndex` only, *reserved* on `StreamBlockScanDataShort` |
+| `cut_through` | bool | Drop outputs already spent at the index tip. `StreamComputeIndex` only, *reserved* on `StreamBlockScanDataShort` |
 
-`cut_through` is applied per output and is judged against a chain tip read
-once at the start of the stream, so one response stream is one consistent
-snapshot. `dustlimit` is applied per transaction, the same reading as the v1
-`/tweaks?dustLimit=` endpoint: a transaction is kept when at least one of its
-surviving outputs reaches the limit, and it then carries all of them. A
-transaction of which no output survives is omitted from the block entirely.
-`dustlimit: 0` with `cut_through: false` returns the unfiltered index byte
-for byte.
-
-The server also has a stricter per output reading of `dustlimit`
-(`database.DustPerOutput`), which drops the individual outputs below the
-limit. The two readings never differ in *which* transactions are returned,
-only in how many output prefixes a returned transaction carries, because
-both keep a transaction exactly when one of its surviving outputs reaches the
-limit. Measured over 1000 blocks at height 900000 with `dustlimit: 1000` and
-`cut_through: true`, both return 16334 transactions; per transaction returns
-33859 prefixes and 1332582 bytes, per output returns 18679 prefixes and
-1211142 bytes, a 9 percent saving. The choice is bandwidth only.
+Both filters apply per transaction, never per output. A transaction is kept
+when at least one of its outputs is unspent at the pinned tip and at or above
+`dustlimit`, and a kept transaction carries all of its output prefixes.
+Removing single outputs would stop a scanner at the first `k` it cannot match
+and hide every later output of that transaction. The tip is read once at the
+start of the stream. `dustlimit: 0` with `cut_through: false` returns the
+unfiltered index byte for byte.
 
 ---
 

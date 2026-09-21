@@ -89,21 +89,13 @@ func (s *OracleService) GetBlockHashByHeight(
 	}, nil
 }
 
-// dustModeComputeIndex is how StreamComputeIndex reads the request's
-// dustlimit: per transaction, the same reading as the dormant
-// TweaksForBlock and the v1 /tweaks?dustLimit endpoint. Set it to
-// database.DustPerOutput to drop individual outputs instead, which strips
-// more bytes but returns a different set than v1 did.
-const dustModeComputeIndex = database.DustPerTx
-
 func (s *OracleService) StreamComputeIndex(
 	req *pb.RangedBlockHeightRequestFiltered,
 	stream pb.OracleService_StreamComputeIndexServer,
 ) error {
 	logging.L.Info().Any("req", req).Msg("StreamComputeIndexServer")
 
-	// cut-through is judged against a tip read once here, so that a long
-	// range is one consistent snapshot instead of drifting with new blocks
+	// Pin the tip so a whole range is filtered against one snapshot
 	var tipHeight uint32
 	if req.CutThrough {
 		var err error
@@ -125,8 +117,7 @@ func (s *OracleService) StreamComputeIndex(
 		}
 
 		computeIndex, err := s.db.FetchComputeIndexFiltered(
-			uint32(height), tipHeight, req.Dustlimit,
-			dustModeComputeIndex, req.CutThrough,
+			uint32(height), tipHeight, req.Dustlimit, req.CutThrough,
 		)
 		if err != nil {
 			logging.L.Err(err).
